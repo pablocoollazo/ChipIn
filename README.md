@@ -6,14 +6,14 @@ Un grupo crea un bote para un regalo o gasto conjunto, invita gente con un códi
 
 ## Stack
 
-- **Backend:** Spring Boot 4 (Java 26, Gradle), Spring Data JPA, PostgreSQL.
+- **Backend:** Spring Boot 4 (Java 25, Gradle), Spring Data JPA, PostgreSQL.
 - **Frontend:** pendiente (React, más adelante).
 
 Ver [DECISIONS.md](./DECISIONS.md) para el detalle de arquitectura, modelo de datos y decisiones de diseño.
 
 ## Requisitos
 
-- JDK 26
+- JDK 25 (en Arch: `jdk25-openjdk`)
 - Docker + Docker Compose (para la base de datos local)
 
 ## Arrancar en local
