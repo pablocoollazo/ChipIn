@@ -1,0 +1,122 @@
+// App de botes para compras grupales
+
+Enum estado_grupo {
+  ABIERTO
+  COMPLETADO
+  CERRADO
+  CANCELADO
+}
+
+Enum metodo_pago {
+  MANUAL
+  AUTOMATICO
+}
+
+Enum estado_aportacion {
+  PENDIENTE
+  MARCADA_PAGADA   // manual: el miembro dice que ha pagado
+  CONFIRMADA       // manual: el creador lo confirma
+  RECHAZADA        // manual: el creador lo rechaza
+  PROCESANDO       // automático: pago en curso en la pasarela
+  COMPLETADA       // automático: la pasarela confirma el pago
+  FALLIDA          // automático: el pago falla
+  REEMBOLSADA      // automático: se devuelve el dinero
+}
+
+Table usuario {
+  id bigint [pk, increment]
+  nombre varchar(100) [not null]
+  email varchar(150) [not null, unique]
+  password_hash varchar(255) [not null, note: 'BCrypt']
+  fecha_registro timestamp [not null, default: `now()`]
+}
+
+Table grupo {
+  id bigint [pk, increment]
+  nombre varchar(100) [not null]
+  descripcion text
+  creador_id bigint [not null, ref: > usuario.id]
+  codigo_invitacion varchar(12) [not null, unique]
+  estado estado_grupo [not null, default: 'ABIERTO']
+  fecha_limite date
+  fecha_creacion timestamp [not null, default: `now()`]
+}
+
+Table miembro_grupo {
+  grupo_id bigint [ref: > grupo.id]
+  usuario_id bigint [ref: > usuario.id]
+  fecha_union timestamp [not null, default: `now()`]
+  cuota_asignada decimal(10,2) [note: 'Opcional']
+
+  indexes {
+    (grupo_id, usuario_id) [pk]
+  }
+}
+
+Table regalo {
+  id bigint [pk, increment]
+  grupo_id bigint [not null, unique, ref: - grupo.id]
+  url varchar(1000) [not null]
+  nombre varchar(255)
+  imagen_url varchar(1000)
+  tienda varchar(100)
+  precio_actual decimal(10,2)
+  moneda char(3) [not null, default: 'EUR']
+  fecha_ultima_actualizacion timestamp
+}
+
+Table historial_precio {
+  id bigint [pk, increment]
+  regalo_id bigint [not null, ref: > regalo.id]
+  precio decimal(10,2) [not null]
+  fecha timestamp [not null, default: `now()`]
+
+  indexes {
+    (regalo_id, fecha)
+  }
+}
+
+Table alerta_precio {
+  id bigint [pk, increment]
+  regalo_id bigint [not null, ref: > regalo.id]
+  usuario_id bigint [not null, ref: > usuario.id]
+  precio_umbral decimal(10,2) [not null, note: 'Avisar cuando precio_actual <= precio_umbral']
+  activa boolean [not null, default: true]
+  fecha_creacion timestamp [not null, default: `now()`]
+  fecha_disparo timestamp [note: 'Cuándo saltó el aviso; null si aún no']
+
+  indexes {
+    (regalo_id, usuario_id) [unique]
+  }
+}
+
+Table aportacion {
+  id bigint [pk, increment]
+  grupo_id bigint [not null, ref: > grupo.id]
+  usuario_id bigint [not null, ref: > usuario.id]
+  importe decimal(10,2) [not null]
+  metodo metodo_pago [not null]
+  estado estado_aportacion [not null, default: 'PENDIENTE']
+  comentario varchar(255)
+  clave_idempotencia varchar(64) [unique, note: 'Header Idempotency-Key del POST; evita duplicar la aportación si el cliente reintenta']
+  referencia_externa varchar(255) [unique, note: 'Id del pago en la pasarela (solo AUTOMATICO)']
+  fecha_creacion timestamp [not null, default: `now()`]
+  fecha_marcado_pagado timestamp [note: 'Solo MANUAL']
+  fecha_confirmacion timestamp
+
+  indexes {
+    (grupo_id, estado)
+  }
+
+  Note: 'El bote de un grupo = SUM(importe) de sus aportaciones en estado CONFIRMADA o COMPLETADA'
+}
+
+Table evento_pago {
+  id bigint [pk, increment]
+  aportacion_id bigint [not null, ref: > aportacion.id]
+  proveedor varchar(30) [not null, note: 'STRIPE, PAYPAL...']
+  id_evento_externo varchar(255) [not null, unique, note: 'Evita procesar dos veces el mismo webhook']
+  tipo varchar(100) [not null]
+  payload text
+  fecha timestamp [not null, default: `now()`]
+}

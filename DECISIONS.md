@@ -20,6 +20,8 @@ Entidades y columnas **en español**, siguiendo el diagrama de base de datos aco
 
 ## Modelo de datos
 
+Esquema completo (tablas, columnas, tipos y restricciones) en [`docs/modelo-datos.dbml`](./docs/modelo-datos.dbml), que es la fuente de verdad. Se puede visualizar pegándolo en [dbdiagram.io](https://dbdiagram.io).
+
 ```
 Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ──< HistorialPrecio
                                 │                          └──< AlertaPrecio >── Usuario
@@ -28,13 +30,21 @@ Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ─
 ```
 
 - **Grupo** es una campaña de bote concreta (tiene su propio `estado`, `fecha_limite`, `codigo_invitacion`), no un círculo de amigos persistente reutilizable — decisión tomada explícitamente al revisar el diagrama, simplifica el modelo.
-- **MiembroGrupo**: entidad propia (no `@ManyToMany`), por el atributo `cuota_asignada`.
+- **Grupo.creador_id** identifica al organizador: es quien confirma o rechaza las aportaciones manuales.
+- **MiembroGrupo**: entidad propia (no `@ManyToMany`), por el atributo `cuota_asignada`. Clave primaria compuesta `(grupo_id, usuario_id)`.
 - **Regalo**: 1:1 opcional con `Grupo`; el enlace/precio de lo que se quiere comprar.
-- **HistorialPrecio** + **AlertaPrecio**: seguimiento de precio del `Regalo`, con aviso configurable por umbral.
+- **HistorialPrecio** + **AlertaPrecio**: seguimiento de precio del `Regalo`, con aviso configurable por umbral. `AlertaPrecio` guarda `precio_umbral`, si está `activa` y `fecha_disparo`; como máximo una alerta por usuario y regalo.
 - **Aportacion**: núcleo transaccional, con estado dual según método de pago:
   - Manual (Bizum/efectivo): `PENDIENTE → MARCADA_PAGADA → CONFIRMADA/RECHAZADA` (autoreporte del pagador + confirmación del organizador).
   - Automático (Stripe, modo test): `PENDIENTE → PROCESANDO → COMPLETADA/FALLIDA/REEMBOLSADA` (confirmación vía webhook).
+  - `clave_idempotencia` (única): guarda el header `Idempotency-Key` del `POST`. Si el cliente reintenta con la misma clave, se devuelve la aportación existente en vez de crear otra.
+  - El bote de un grupo es la suma de `importe` de sus aportaciones en estado `CONFIRMADA` o `COMPLETADA`. No se guarda como columna.
 - **EventoPago**: log de webhooks de Stripe con `id_evento_externo` único, para no procesar el mismo pago dos veces (idempotencia).
+
+### Pendiente de decidir
+
+- ¿`Grupo` necesita `importe_objetivo`? Sin él, un grupo sin `Regalo` no tiene meta con la que comparar el bote.
+- `usuario.password_hash` es `not null`: ¿se guarda ya con BCrypt (`spring-security-crypto`) o se deja nullable hasta que llegue Spring Security?
 
 ### Por qué no Stripe Connect
 
