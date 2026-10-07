@@ -12,7 +12,7 @@ Proyecto de una asignatura de 4,5 créditos, hecho en pareja. No es un TFG: alca
 - **Package-by-feature**, no por capas: `usuario/`, `grupo/`, `regalo/`, `aportacion/`, cada uno con su entidad, repositorio, servicio y controller juntos. Elegido por ser 2 personas trabajando en paralelo — minimiza conflictos de merge y mantiene cohesionado el código de cada funcionalidad.
 - Postgres vía Docker Compose en local.
 - DTOs desde el principio en las respuestas del controller (evita `StackOverflowError` por relaciones bidireccionales al serializar con Jackson).
-- Spring Security/JWT se añade cuando lo dé la asignatura, no antes.
+- Spring Security/JWT se añade cuando lo dé la asignatura, no antes. Las contraseñas sí se guardan hasheadas con BCrypt desde el principio (`usuario.password_hash` no nulo), usando solo `spring-security-crypto` (`BCryptPasswordEncoder`), que no activa la seguridad de los endpoints. Así no hay que migrar datos ni cambiar el esquema cuando llegue Security.
 
 ## Convención de nombres
 
@@ -30,6 +30,7 @@ Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ─
 ```
 
 - **Grupo** es una campaña de bote concreta (tiene su propio `estado`, `fecha_limite`, `codigo_invitacion`), no un círculo de amigos persistente reutilizable — decisión tomada explícitamente al revisar el diagrama, simplifica el modelo.
+- **Grupo.importe_objetivo** (obligatorio): la meta del bote. Se guarda en el grupo y no se toma de `Regalo.precio_actual`, porque el regalo es opcional y su precio cambia; así todo grupo tiene meta, tenga regalo o no.
 - **Grupo.creador_id** identifica al organizador: es quien confirma o rechaza las aportaciones manuales.
 - **MiembroGrupo**: entidad propia (no `@ManyToMany`), por el atributo `cuota_asignada`. Clave primaria compuesta `(grupo_id, usuario_id)`.
 - **Regalo**: 1:1 opcional con `Grupo`; el enlace/precio de lo que se quiere comprar.
@@ -40,11 +41,6 @@ Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ─
   - `clave_idempotencia` (única): guarda el header `Idempotency-Key` del `POST`. Si el cliente reintenta con la misma clave, se devuelve la aportación existente en vez de crear otra.
   - El bote de un grupo es la suma de `importe` de sus aportaciones en estado `CONFIRMADA` o `COMPLETADA`. No se guarda como columna.
 - **EventoPago**: log de webhooks de Stripe con `id_evento_externo` único, para no procesar el mismo pago dos veces (idempotencia).
-
-### Pendiente de decidir
-
-- ¿`Grupo` necesita `importe_objetivo`? Sin él, un grupo sin `Regalo` no tiene meta con la que comparar el bote.
-- `usuario.password_hash` es `not null`: ¿se guarda ya con BCrypt (`spring-security-crypto`) o se deja nullable hasta que llegue Spring Security?
 
 ### Por qué no Stripe Connect
 
