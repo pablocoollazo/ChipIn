@@ -28,7 +28,7 @@ public class Grupo {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal importeObjetivo;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "creador_id", nullable = false)
     private Usuario creador;
 
