@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
 
@@ -26,5 +27,13 @@ public class Usuario {
     private Instant fechaRegistro;
 
     public Usuario() {}
+
+    public static Usuario from(UsuarioDTO dto, PasswordEncoder encoder) {
+        Usuario usuario = new Usuario();
+        usuario.setNombre(dto.nombre());
+        usuario.setEmail(dto.email());
+        usuario.setPasswordHash(encoder.encode(dto.password()));
+        return usuario;
+    }
 
 }
