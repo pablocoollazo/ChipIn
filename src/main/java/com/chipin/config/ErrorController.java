@@ -1,7 +1,6 @@
 package com.chipin.config;
 
 import com.chipin.usuario.EmailDuplicadoException;
-import com.chipin.usuario.UsuarioController;
 import com.chipin.usuario.UsuarioNoEncontradoException;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpStatus;

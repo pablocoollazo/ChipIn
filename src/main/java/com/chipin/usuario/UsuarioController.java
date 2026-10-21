@@ -1,5 +1,6 @@
 package com.chipin.usuario;
 
+import jakarta.validation.Valid;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -48,7 +49,7 @@ public class UsuarioController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public ResponseEntity<UsuarioDTO> create(@RequestBody UsuarioDTO usuario) throws EmailDuplicadoException {
+    public ResponseEntity<UsuarioDTO> create(@RequestBody @Valid UsuarioDTO usuario) throws EmailDuplicadoException {
         UsuarioDTO creado = usuarioService.create(usuario);
         return ResponseEntity
                 .created(MvcUriComponentsBuilder.fromMethodName(UsuarioController.class, "get", creado.id()).build().toUri())
