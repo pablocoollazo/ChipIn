@@ -10,5 +10,5 @@ public interface MiembroGrupoRepository extends JpaRepository<MiembroGrupo, Miem
     // EntityGraph evita las N+1 querys (N consultas para N meimbros + 1 para o grupo).
     // attributePaths indica que queremos traer el usuario asociado a cada miembro del grupo.
     @EntityGraph(attributePaths = {"usuario"})
-    List<MiembroGrupo> findByGroupId(Long grupoId);
+    List<MiembroGrupo> findByGrupoId(Long grupoId);
 }
