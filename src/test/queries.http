@@ -1,0 +1,39 @@
+
+### Crear usuario (201)
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{
+  "nombre": "Luis",
+  "email": "luis@test.com",
+  "password": "1234"
+}
+
+### Crear usuario con email duplicado (409)
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{
+  "nombre": "Luis",
+  "email": "luis@test.com",
+  "password": "1234"
+}
+
+### Crear usuario con email inválido (400)
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{
+  "nombre": "Luis",
+  "email": "noesunemail",
+  "password": "1234"
+}
+
+### Listar usuarios paginados y ordenados por nombre descendente (200)
+GET http://localhost:8080/usuarios?page=0&size=10&sort=-nombre
+
+### Obtener usuario por id (200)
+GET http://localhost:8080/usuarios/1
+
+### Obtener usuario inexistente (404)
+GET http://localhost:8080/usuarios/999
