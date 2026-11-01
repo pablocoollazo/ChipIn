@@ -20,6 +20,14 @@ Java 25, Spring Boot 4, Spring Data JPA, PostgreSQL, Docker Compose, Gradle.
 
 Errors follow RFC 7807 Problem Details, and passwords are stored hashed with BCrypt.
 
+## Architecture
+
+```
+Client → Controller → Service → Repository → PostgreSQL
+```
+
+Controllers exchange DTOs rather than entities, and `ErrorController` turns exceptions into Problem Details responses.
+
 ## Running locally
 
 Requires JDK 25 and Docker with Docker Compose.
@@ -34,6 +42,10 @@ The credentials in `docker-compose.yml` are for local development only.
 ## Project structure
 
 Code is organised by feature, not by layer: each package under `src/main/java/com/chipin/` holds the entity, repository, service and controller of one feature.
+
+## Testing
+
+The automated suite is currently a Spring context test. `src/test/queries.http` holds example requests for the user API. Unit and integration tests are planned.
 
 ## Design decisions
 
