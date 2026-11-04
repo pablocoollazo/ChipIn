@@ -1,32 +1,56 @@
 # Chip In
 
-Bote compartido entre amigos, con seguimiento de precio incluido.
+Shared gift fund for groups of friends, with price tracking. A group opens a fund for a gift or shared expense, members join with an invite code and pay their share, and if the fund is linked to a product, its price is tracked to show when to buy.
 
-Un grupo crea un bote para un regalo o gasto conjunto, invita gente con un código, cada uno aporta su parte (con tarjeta o marcando manualmente un Bizum/efectivo), y si el bote está ligado a un artículo con enlace, se sigue su precio para saber cuándo es buen momento de comprar.
+Course project for Service Engineering at USC, built by a team of two. Work in progress.
 
-## Stack
+## Status
 
-- **Backend:** Spring Boot 4 (Java 25, Gradle), Spring Data JPA, PostgreSQL.
-- **Frontend:** pendiente (React, más adelante).
+| Area | State |
+|---|---|
+| User API (`GET /usuarios`, `GET /usuarios/{id}`, `POST /usuarios`) | Done |
+| Group data model | Done |
+| Group API | In progress |
+| Gifts, contributions, price alerts, Stripe test payments | Planned |
+| Authentication, frontend | Planned |
 
-Ver [DECISIONS.md](./DECISIONS.md) para el detalle de arquitectura, modelo de datos y decisiones de diseño.
+## Tech stack
 
-## Requisitos
+Java 25, Spring Boot 4, Spring Data JPA, PostgreSQL, Docker Compose, Gradle.
 
-- JDK 25 (en Arch: `jdk25-openjdk`)
-- Docker + Docker Compose (para la base de datos local)
+Errors follow RFC 7807 Problem Details, and passwords are stored hashed with BCrypt.
 
-## Arrancar en local
+## Architecture
 
-```bash
-docker compose up -d        # levanta Postgres
-./gradlew bootRun           # arranca la API en localhost:8080
+```
+Client → Controller → Service → Repository → PostgreSQL
 ```
 
-## Estructura
+Controllers exchange DTOs rather than entities, and `ErrorController` turns exceptions into Problem Details responses.
 
-Organizado por feature (no por capas): cada paquete bajo `src/main/java/com/chipin/` agrupa entidad, repositorio, servicio y controller de una misma funcionalidad (`usuario/`, `grupo/`, `regalo/`, `aportacion/`...).
+## Running locally
 
-## Commits
+Requires JDK 25 and Docker with Docker Compose.
 
-Seguimos [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
+```bash
+docker compose up -d   # start PostgreSQL
+./gradlew bootRun      # start the API on localhost:8080
+```
+
+The credentials in `docker-compose.yml` are for local development only.
+
+## Project structure
+
+Code is organised by feature, not by layer: each package under `src/main/java/com/chipin/` holds the entity, repository, service and controller of one feature.
+
+## Testing
+
+The automated suite is currently a Spring context test. `src/test/queries.http` holds example requests for the user API. Unit and integration tests are planned.
+
+## Design decisions
+
+Architecture, data model and REST conventions are documented in Spanish in [DECISIONS.md](./DECISIONS.md). The full schema is in [docs/modelo-datos.dbml](./docs/modelo-datos.dbml).
+
+## Contributing
+
+Work happens on feature branches, reviewed through pull requests. Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
