@@ -4,7 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 // Record para hacer un DTO de MiembroGrupo, para enviar la información de un miembro sin enviar el objeto completo
-public record MiembroDTO(Long usuarioId,
+public record MiembroDTO(Long grupoId,
+                         Long usuarioId,
                          String nombre,
                          BigDecimal cuotaAsignada,
                          Instant fechaUnion) {
@@ -12,6 +13,7 @@ public record MiembroDTO(Long usuarioId,
     // Metodo para convertir un objeto MiembroGrupo a MiembroDTO
     public static MiembroDTO from (MiembroGrupo miembro) {
         return new MiembroDTO(
+                miembro.getGrupo().getId(),
                 miembro.getUsuario().getId(),
                 miembro.getUsuario().getNombre(),
                 miembro.getCuotaAsignada(),

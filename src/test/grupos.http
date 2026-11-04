@@ -10,6 +10,11 @@ Content-Type: application/json
   "fechaLimite": "2026-12-20"
 }
 
+> {%
+    client.global.set("grupoId", response.body.id);
+    client.global.set("codigo", response.body.codigoInvitacion);
+%}
+
 ### Crear grupo sin importe (400)
 POST http://localhost:8080/grupos
 Content-Type: application/json
@@ -30,20 +35,20 @@ Content-Type: application/json
 }
 
 ### Obtener grupo (200)
-GET http://localhost:8080/grupos/1
+GET http://localhost:8080/grupos/{{grupoId}}
 
 ### Obtener grupo inexistente (404)
 GET http://localhost:8080/grupos/999
 
 ### Listar miembros (200, el creador ya aparece)
-GET http://localhost:8080/grupos/1/miembros
+GET http://localhost:8080/grupos/{{grupoId}}/miembros
 
-### Unirse con código (201) — copia el codigoInvitacion de la respuesta de crear grupo
+### Unirse con código (201)
 POST http://localhost:8080/miembros
 Content-Type: application/json
 
 {
-  "codigoInvitacion": "PEGA_AQUI",
+  "codigoInvitacion": "{{codigo}}",
   "usuarioId": 2
 }
 
@@ -52,7 +57,7 @@ POST http://localhost:8080/miembros
 Content-Type: application/json
 
 {
-  "codigoInvitacion": "PEGA_AQUI",
+  "codigoInvitacion": "{{codigo}}",
   "usuarioId": 2
 }
 
@@ -64,3 +69,6 @@ Content-Type: application/json
   "codigoInvitacion": "NOEXISTE",
   "usuarioId": 2
 }
+
+### Listar miembros tras unirse (200, creador + usuario 2)
+GET http://localhost:8080/grupos/{{grupoId}}/miembros
