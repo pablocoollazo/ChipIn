@@ -2,7 +2,6 @@ package com.chipin.grupo;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
-import org.springframework.cglib.core.Local;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,9 +14,9 @@ public record GrupoDTO(@JsonProperty(access = JsonProperty.Access.READ_ONLY) Lon
                        @NotNull @Positive @Digits(integer = 8, fraction = 2) BigDecimal importeObjetivo,
                        @NotNull Long creadorId,
                        @JsonProperty(access = JsonProperty.Access.READ_ONLY) String codigoInvitacion,
-                       EstadoGrupo estado,
-                       @JsonProperty(access = JsonProperty.Access.READ_ONLY) @FutureOrPresent LocalDate fechaLimite,
-                       Instant fechaCreacion) {
+                       @JsonProperty(access = JsonProperty.Access.READ_ONLY) EstadoGrupo estado,
+                       @FutureOrPresent LocalDate fechaLimite,
+                       @JsonProperty(access = JsonProperty.Access.READ_ONLY) Instant fechaCreacion) {
 
     // Metodo para convertir un objeto Grupo a GrupoDTO
     public static GrupoDTO from (Grupo grupo) {
