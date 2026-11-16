@@ -12,6 +12,10 @@ Proyecto de una asignatura de 4,5 créditos, hecho en pareja. No es un TFG: alca
 - **Package-by-feature**, no por capas: `usuario/`, `grupo/`, `regalo/`, `aportacion/`, cada uno con su entidad, repositorio, servicio y controller juntos. Elegido por ser 2 personas trabajando en paralelo — minimiza conflictos de merge y mantiene cohesionado el código de cada funcionalidad.
 - Postgres vía Docker Compose en local.
 - DTOs desde el principio en las respuestas del controller (evita `StackOverflowError` por relaciones bidireccionales al serializar con Jackson).
+- Paquetes transversales, fuera de las features:
+  - `auth/`: todo lo de "quién hace la petición" (`@UsuarioActual`, `UsuarioActualResolver`, `NoAutenticadoException`, `SinPermisoException`). Separado para que, cuando llegue JWT, solo cambie este paquete.
+  - `config/`: solo configuración de Spring (`SeguridadConfig`, `WebConfig`, `ErrorController`).
+- Errores: cada feature tiene su propio `@RestControllerAdvice` en su paquete (`UsuarioErrorHandler`, `GrupoErrorHandler`…), para no editar los dos el mismo fichero. `ErrorController` se queda con el `401`/`403` y con los errores propios de Spring (validación, JSON mal formado, `405`, `415`…), y es el único que hereda de `ResponseEntityExceptionHandler`; si lo heredaran varios, competirían por los mismos errores.
 - Spring Security/JWT se añade cuando lo dé la asignatura, no antes. Las contraseñas sí se guardan hasheadas con BCrypt desde el principio (`usuario.password_hash` no nulo), usando solo `spring-security-crypto` (`BCryptPasswordEncoder`), que no activa la seguridad de los endpoints. Así no hay que migrar datos ni cambiar el esquema cuando llegue Security.
 
 ## Convención de nombres
@@ -72,24 +76,27 @@ El autor de grupo hace aportación porque esta depende de `Grupo`/`MiembroGrupo`
 
 Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 
-### Paso previo: convenciones comunes (Pablo Collazo, PR pequeño antes de abrir las ramas)
+### Paso previo: convenciones comunes (Pablo Collazo) ✅ Hecho
 
-- **Usuario que hace la petición**: hasta que llegue Spring Security, se identifica con la cabecera `X-Usuario-Id` (en vez de mandar `usuarioId`/`creadorId` en el body). Se sustituirá por el JWT sin cambiar los servicios. Petición sin cabecera → `401`; usuario sin permiso (p. ej. no es el creador) → `403`.
-- **Errores**: cada feature declara sus handlers en su propio `@RestControllerAdvice` dentro de su paquete (`regalo/RegaloErrorHandler`, `aportacion/AportacionErrorHandler`), para no editar los dos el mismo `ErrorController`.
-- **Datos de prueba**: fichero SQL de seed con usuarios y un grupo de ejemplo, del que dependen los `.http`.
+- **Usuario que hace la petición**: hasta que llegue Spring Security, se identifica con la cabecera `X-Usuario-Id` (en vez de mandar `usuarioId`/`creadorId` en el body). Se sustituirá por el JWT cambiando solo `UsuarioActualResolver`.
+  - Uso: en un endpoint que necesite saber quién llama, se añade un parámetro `@UsuarioActual Long usuarioId`. Si el endpoint no lo necesita, no se pone.
+  - `401` si falta la cabecera, no es un número o el usuario no existe. El `403` lo lanza cada servicio con `SinPermisoException` (p. ej. alguien que no es el creador intenta confirmar una aportación).
+- **Errores**: un `@RestControllerAdvice` por feature (ver Arquitectura). Las ramas nuevas añaden el suyo: `regalo/RegaloErrorHandler`, `aportacion/AportacionErrorHandler`.
+- **Datos de prueba**: `src/main/resources/sql/` (`usuarios.sql`, `grupos.sql`), cargados en cada arranque tras vaciar las tablas. Usuarios 1–3 con contraseña `1234`; grupo 1 con código `DEMO2026`, miembros 1 y 2 (el 3 queda libre para probar a unirse). Cada feature añade su fichero y lo registra en `spring.sql.init.data-locations`, en orden de dependencias.
+- **Peticiones de ejemplo**: `src/test/http/`, un `.http` por feature.
 
 ### Flecos de la fase 1
 
 | Responsable | Pendiente |
 |---|---|
-| Pablo Mouriño | Grupo: `GET /grupos?usuarioId=` (mis grupos), `PATCH /grupos/{id}` (JSON Patch, incluido cambio de `estado`), `DELETE /grupos/{id}/miembros/{usuarioId}` (salir del grupo), asignar `cuota_asignada`; el `Location` de unirse debe apuntar al miembro creado, no a la colección |
+| Pablo Mouriño | Grupo: `GET /grupos?usuarioId=` (mis grupos), `PATCH /grupos/{id}` (JSON Patch, incluido cambio de `estado`), `DELETE /grupos/{id}/miembros/{usuarioId}` (salir del grupo), asignar `cuota_asignada`; el `Location` de unirse debe apuntar al miembro creado, no a la colección; usar `@UsuarioActual` en `POST /grupos` y `POST /miembros` (quitar `creadorId`/`usuarioId` del body); issue #7 (`fechaUnion` a `null` al unirse) |
 | Pablo Collazo | Usuario: `PUT`, `PATCH` (JSON Patch) y `DELETE /usuarios/{id}` |
 
 ### Resto de fases
 
 | Fase | Pablo Mouriño | Pablo Collazo |
 |---|---|---|
-| 3. Tests | Grupo y aportación | Usuario y regalo |
+| 3. Tests | Grupo y aportación | Usuario, regalo y `UsuarioActualResolver` (401 sin cabecera / id inválido / usuario inexistente, 200 con usuario válido) |
 | 4. Ampliación | Stripe Checkout test, webhooks, `EventoPago` | Scheduler de precios y alertas |
 | 5. Memoria | Grupo, aportación y pagos | Arquitectura, decisiones, usuario y regalo |
 
