@@ -1,5 +1,7 @@
 package com.chipin.config;
 
+import com.chipin.auth.NoAutenticadoException;
+import com.chipin.auth.SinPermisoException;
 import com.chipin.grupo.CodigoInvitacionNoValidoException;
 import com.chipin.grupo.GrupoNoAbiertoException;
 import com.chipin.grupo.GrupoNoEncontradoException;
@@ -22,24 +24,30 @@ public class ErrorController extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(UsuarioNoEncontradoException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handle(UsuarioNoEncontradoException ex){
+    public ErrorResponse handle(UsuarioNoEncontradoException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problemDetail.setTitle("Usuario no encontrado");
         problemDetail.setDetail("No existe ningún usuario con id " + ex.getId());
-        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class).pathSegment("error", "usuario-no-encontrado").build().toUri());
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "usuario-no-encontrado")
+                .build()
+                .toUri());
 
-        return ErrorResponse.builder(ex,  problemDetail).build();
+        return ErrorResponse.builder(ex, problemDetail).build();
     }
 
     @ExceptionHandler(EmailDuplicadoException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handle(EmailDuplicadoException ex){
+    public ErrorResponse handle(EmailDuplicadoException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         problemDetail.setTitle("Email duplicado");
         problemDetail.setDetail("Existe usuario con el email " + ex.getEmail());
-        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class).pathSegment("error", "email-duplicado").build().toUri());
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "email-duplicado")
+                .build()
+                .toUri());
 
-        return ErrorResponse.builder(ex,  problemDetail).build();
+        return ErrorResponse.builder(ex, problemDetail).build();
     }
 
     @ExceptionHandler(GrupoNoEncontradoException.class)
@@ -49,7 +57,9 @@ public class ErrorController extends ResponseEntityExceptionHandler {
         problemDetail.setTitle("Grupo no encontrado");
         problemDetail.setDetail("No existe ningún grupo con id " + ex.getGrupoId());
         problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
-                .pathSegment("error", "grupo-no-encontrado").build().toUri());
+                .pathSegment("error", "grupo-no-encontrado")
+                .build()
+                .toUri());
         return ErrorResponse.builder(ex, problemDetail).build();
     }
 
@@ -60,7 +70,9 @@ public class ErrorController extends ResponseEntityExceptionHandler {
         problemDetail.setTitle("Código de invitación inválido");
         problemDetail.setDetail("El código de invitación " + ex.getCodigoInvitacion() + " no es válido.");
         problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
-                .pathSegment("error", "codigo-invitacion-invalido").build().toUri());
+                .pathSegment("error", "codigo-invitacion-invalido")
+                .build()
+                .toUri());
         return ErrorResponse.builder(ex, problemDetail).build();
     }
 
@@ -71,7 +83,9 @@ public class ErrorController extends ResponseEntityExceptionHandler {
         problemDetail.setTitle("Grupo no abierto");
         problemDetail.setDetail("El grupo de id " + ex.getGrupoId() + " no está abierto.");
         problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
-                .pathSegment("error", "grupo-no-abierto").build().toUri());
+                .pathSegment("error", "grupo-no-abierto")
+                .build()
+                .toUri());
         return ErrorResponse.builder(ex, problemDetail).build();
     }
 
@@ -80,10 +94,38 @@ public class ErrorController extends ResponseEntityExceptionHandler {
     public ErrorResponse handle(YaEsMiembroException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         problemDetail.setTitle("Usuario ya miembro");
-        problemDetail.setDetail("El usuario de id " + ex.getUsuarioId() +
-                " ya es miembro del grupo " + ex.getGrupoId() + ".");
+        problemDetail.setDetail(
+                "El usuario de id " + ex.getUsuarioId() + " ya es miembro del grupo " + ex.getGrupoId() + ".");
         problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
-                .pathSegment("error", "ya-es-miembro").build().toUri());
+                .pathSegment("error", "ya-es-miembro")
+                .build()
+                .toUri());
+        return ErrorResponse.builder(ex, problemDetail).build();
+    }
+
+    @ExceptionHandler(NoAutenticadoException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse handle(NoAutenticadoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        problemDetail.setTitle("No autenticado");
+        problemDetail.setDetail(ex.getMessage());
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "no-autenticado")
+                .build()
+                .toUri());
+        return ErrorResponse.builder(ex, problemDetail).build();
+    }
+
+    @ExceptionHandler(SinPermisoException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handle(SinPermisoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problemDetail.setTitle("Sin permiso");
+        problemDetail.setDetail(ex.getMessage());
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "sin-permiso")
+                .build()
+                .toUri());
         return ErrorResponse.builder(ex, problemDetail).build();
     }
 }
