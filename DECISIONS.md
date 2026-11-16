@@ -59,13 +59,47 @@ El caso de uso real implica que organizadores distintos (en grupos distintos) de
 - Núcleo (`usuario/`, `grupo/`) se construye primero, junto, porque lo necesita todo lo demás.
 - A partir de ahí, ramas en paralelo por feature (`feature/regalo`, `feature/aportacion`), cada una cerrada con un Pull Request revisado por el otro antes de mergear a `main`.
 
+## Reparto de la fase 2
+
+Repartido según quién conoce mejor el código del que depende cada rama, y equilibrado con la ampliación de la fase 4.
+
+| Rama | Responsable | Contenido | Ampliación (fase 4) |
+|---|---|---|---|
+| `feature/aportacion` | Pablo Mouriño (`Pablomou6`) | `Aportacion`, `MetodoPago`, `EstadoAportacion`; `POST /grupos/{id}/aportaciones` con `Idempotency-Key`; flujo manual por `PATCH` con transiciones validadas; total del bote calculado | Stripe Checkout en modo test, webhooks y `EventoPago` |
+| `feature/regalo` | Pablo Collazo (`pablocoollazo`) | `Regalo` (`PUT/GET/DELETE /grupos/{id}/regalo`), `HistorialPrecio` (`GET .../regalo/historial-precios`), `AlertaPrecio` (CRUD, una por usuario y regalo) | Scheduler que actualiza precios y dispara alertas |
+
+El autor de grupo hace aportación porque esta depende de `Grupo`/`MiembroGrupo` (pertenencia, estado `ABIERTO`, creador como confirmador). Regalo solo necesita que el grupo exista.
+
+Cada rama incluye su fichero `.http` y tests de integración de su servicio.
+
+### Paso previo: convenciones comunes (Pablo Collazo, PR pequeño antes de abrir las ramas)
+
+- **Usuario que hace la petición**: hasta que llegue Spring Security, se identifica con la cabecera `X-Usuario-Id` (en vez de mandar `usuarioId`/`creadorId` en el body). Se sustituirá por el JWT sin cambiar los servicios. Petición sin cabecera → `401`; usuario sin permiso (p. ej. no es el creador) → `403`.
+- **Errores**: cada feature declara sus handlers en su propio `@RestControllerAdvice` dentro de su paquete (`regalo/RegaloErrorHandler`, `aportacion/AportacionErrorHandler`), para no editar los dos el mismo `ErrorController`.
+- **Datos de prueba**: fichero SQL de seed con usuarios y un grupo de ejemplo, del que dependen los `.http`.
+
+### Flecos de la fase 1
+
+| Responsable | Pendiente |
+|---|---|
+| Pablo Mouriño | Grupo: `GET /grupos?usuarioId=` (mis grupos), `PATCH /grupos/{id}` (JSON Patch, incluido cambio de `estado`), `DELETE /grupos/{id}/miembros/{usuarioId}` (salir del grupo), asignar `cuota_asignada`; el `Location` de unirse debe apuntar al miembro creado, no a la colección |
+| Pablo Collazo | Usuario: `PUT`, `PATCH` (JSON Patch) y `DELETE /usuarios/{id}` |
+
+### Resto de fases
+
+| Fase | Pablo Mouriño | Pablo Collazo |
+|---|---|---|
+| 3. Tests | Grupo y aportación | Usuario y regalo |
+| 4. Ampliación | Stripe Checkout test, webhooks, `EventoPago` | Scheduler de precios y alertas |
+| 5. Memoria | Grupo, aportación y pagos | Arquitectura, decisiones, usuario y regalo |
+
 ## Roadmap
 
 | Fase | Contenido | Estado |
 |---|---|---|
 | 0. Base | Proyecto Spring Boot + Postgres | ✅ Hecho |
-| 1. Núcleo | `Usuario`, `Grupo`, `EstadoGrupo`, `MiembroGrupo` | 🔲 En curso |
-| 2. Regalo + Aportación | En paralelo, 2 ramas | 🔲 Pendiente |
+| 1. Núcleo | `Usuario`, `Grupo`, `EstadoGrupo`, `MiembroGrupo` | ✅ Mergeado (PRs #2–#6); flecos pendientes repartidos en fase 2 |
+| 2. Regalo + Aportación | En paralelo, 2 ramas (ver reparto) | 🔲 Pendiente |
 | 3. Testing y pulido | Tests unitarios e integración | 🔲 Pendiente |
 | 4. Ampliación | Scheduler de precios, Stripe Checkout test | 🔲 Pendiente |
 | 5. Documentación de cierre | Memoria de la asignatura | 🔲 Pendiente |
