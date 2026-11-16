@@ -45,7 +45,7 @@ Code is organised by feature, not by layer: each package under `src/main/java/co
 
 ## Testing
 
-The automated suite is currently a Spring context test. `src/test/queries.http` holds example requests for the user API. Unit and integration tests are planned.
+The automated suite is currently a Spring context test. `src/test/http/usuarios.http` holds example requests for the user API. Unit and integration tests are planned.
 
 ## Design decisions
 
