@@ -75,7 +75,7 @@ public class GrupoService {
 
         // Guardamos el grupo en la BD para asignarle un id y unimos ya el primer miembro (el creador)
         grupo = grupoRepository.save(grupo);
-        miembroGrupoRepository.save(new MiembroGrupo(grupo, creador));
+        miembroGrupoRepository.saveAndFlush(new MiembroGrupo(grupo, creador));
         return GrupoDTO.from(grupo);
     }
 
@@ -98,7 +98,7 @@ public class GrupoService {
 
         Usuario usuario = buscarUsuario(usuarioId);
         MiembroGrupo miembroGrupo = new MiembroGrupo(grupo, usuario);
-        miembroGrupo = miembroGrupoRepository.save(miembroGrupo);
+        miembroGrupo = miembroGrupoRepository.saveAndFlush(miembroGrupo);
         return MiembroDTO.from(miembroGrupo);
     }
 
