@@ -13,10 +13,28 @@ Proyecto de una asignatura de 4,5 créditos, hecho en pareja. No es un TFG: alca
 - Postgres vía Docker Compose en local.
 - DTOs desde el principio en las respuestas del controller (evita `StackOverflowError` por relaciones bidireccionales al serializar con Jackson).
 - Paquetes transversales, fuera de las features:
-  - `auth/`: todo lo de "quién hace la petición" (`@UsuarioActual`, `UsuarioActualResolver`, `NoAutenticadoException`, `SinPermisoException`). Separado para que, cuando llegue JWT, solo cambie este paquete.
+  - `auth/`: todo lo de "quién hace la petición": login (`AutenticacionController`, `AutenticacionService`, `AutenticacionDTO`), JWT (`JwtService`, `JwtAuthenticationFilter`, `JwtAuthenticationEntryPoint`), `@UsuarioActual` + `UsuarioActualResolver`, `NoAutenticadoException` y `SinPermisoException`. Separado para que el cambio de cabecera provisional a JWT solo tocara este paquete (y así fue: ningún controller cambió).
   - `config/`: solo configuración de Spring (`SeguridadConfig`, `WebConfig`, `ErrorController`).
 - Errores: cada feature tiene su propio `@RestControllerAdvice` en su paquete (`UsuarioErrorHandler`, `GrupoErrorHandler`…), para no editar los dos el mismo fichero. `ErrorController` se queda con el `401`/`403` y con los errores propios de Spring (validación, JSON mal formado, `405`, `415`…), y es el único que hereda de `ResponseEntityExceptionHandler`; si lo heredaran varios, competirían por los mismos errores.
-- Spring Security/JWT se añade cuando lo dé la asignatura, no antes. Las contraseñas sí se guardan hasheadas con BCrypt desde el principio (`usuario.password_hash` no nulo), usando solo `spring-security-crypto` (`BCryptPasswordEncoder`), que no activa la seguridad de los endpoints. Así no hay que migrar datos ni cambiar el esquema cuando llegue Security.
+- Contraseñas hasheadas con BCrypt desde el principio (`usuario.password_hash` no nulo), antes incluso de tener Spring Security, para no tener que migrar datos ni cambiar el esquema al añadirlo.
+
+## Autenticación (Spring Security + JWT)
+
+Añadida en la rama `feature/auth`, cuando la asignatura llegó a seguridad. Hasta entonces el usuario se identificaba con una cabecera provisional `X-Usuario-Id`.
+
+- **API sin estado**: sesión `STATELESS` y CSRF desactivado (no hay cookies de sesión que proteger). Cada petición se autentica con `Authorization: Bearer <token>`.
+- **Rutas públicas**: `POST /usuarios` (registro), `POST /tokens` (login) y `/error`. Todo lo demás exige token.
+- **Token**: JWT firmado con **RS256** (par de claves RSA de 2048 bits en un keystore PKCS12, `src/main/resources/jwt.p12`). El `subject` es el id del usuario y dura 15 minutos (`chipin.jwt.access-ttl`). Se usa clave asimétrica para que, si otro servicio tuviera que verificar tokens, le bastara la clave pública.
+  - Limitación: el keystore y su contraseña están en el repo porque es de desarrollo. En producción irían fuera (variables de entorno o un gestor de secretos).
+- **Login: `POST /tokens`**, con email y contraseña en el body. Responde **`204 No Content`** con el token en la cabecera `Authorization`, igual que el proyecto de ejemplo de la asignatura.
+  - Ruta `/tokens` y no `/auth/login` (la del ejemplo) para respetar la regla de URLs sin verbos: el `POST` crea un token.
+  - `204` y no `201`: el token no es un recurso que se pueda consultar después con `GET`, así que no hay `Location` coherente que devolver.
+  - Las clases se llaman `Autenticacion*` (por la responsabilidad y el paquete `auth/`, como el `AuthenticationController` del ejemplo) y no `Token*`, para no confundirlas con `JwtService` ni con los refresh tokens que vendrán.
+- **Cómo se resuelve el usuario**: `JwtAuthenticationFilter` valida el token y guarda el id como principal en el `SecurityContext`. `UsuarioActualResolver` lo lee de ahí para los parámetros `@UsuarioActual` y comprueba que el usuario siga existiendo (un token sigue siendo válido aunque el usuario se borre después).
+- **Errores 401 en formato Problem Details**: los errores de seguridad ocurren en los filtros, antes de Spring MVC, así que los `@RestControllerAdvice` no los ven. `JwtAuthenticationEntryPoint` los reenvía al `HandlerExceptionResolver` como `NoAutenticadoException`, y así el `ErrorController` sigue siendo el único sitio que da formato al 401.
+  - Login fallido: mismo mensaje ("Email o contraseña incorrectos") tanto si el email no existe como si la contraseña es incorrecta, para no revelar qué emails están registrados (enumeración de usuarios).
+  - Consecuencia conocida: una ruta inexistente sin token devuelve `401`, no `404`, porque la seguridad se comprueba antes de saber si la ruta existe.
+- **Pendiente**: refresh token (la propiedad `chipin.jwt.refresh-ttl` ya existe) y logout, en otra rama para que esta PR no crezca.
 
 ## Convención de nombres
 
@@ -78,12 +96,12 @@ Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 
 ### Paso previo: convenciones comunes (Pablo Collazo) ✅ Hecho
 
-- **Usuario que hace la petición**: hasta que llegue Spring Security, se identifica con la cabecera `X-Usuario-Id` (en vez de mandar `usuarioId`/`creadorId` en el body). Se sustituirá por el JWT cambiando solo `UsuarioActualResolver`.
+- **Usuario que hace la petición**: se obtiene del JWT (ver [Autenticación](#autenticación-spring-security--jwt)), en vez de mandar `usuarioId`/`creadorId` en el body. Inicialmente era la cabecera provisional `X-Usuario-Id`, ya sustituida.
   - Uso: en un endpoint que necesite saber quién llama, se añade un parámetro `@UsuarioActual Long usuarioId`. Si el endpoint no lo necesita, no se pone.
-  - `401` si falta la cabecera, no es un número o el usuario no existe. El `403` lo lanza cada servicio con `SinPermisoException` (p. ej. alguien que no es el creador intenta confirmar una aportación).
+  - `401` si no hay token, no es válido o su usuario ya no existe. El `403` lo lanza cada servicio con `SinPermisoException` (p. ej. alguien que no es el creador intenta confirmar una aportación).
 - **Errores**: un `@RestControllerAdvice` por feature (ver Arquitectura). Las ramas nuevas añaden el suyo: `regalo/RegaloErrorHandler`, `aportacion/AportacionErrorHandler`.
 - **Datos de prueba**: `src/main/resources/sql/` (`usuarios.sql`, `grupos.sql`), cargados en cada arranque tras vaciar las tablas. Usuarios 1–3 con contraseña `1234`; grupo 1 con código `DEMO2026`, miembros 1 y 2 (el 3 queda libre para probar a unirse). Cada feature añade su fichero y lo registra en `spring.sql.init.data-locations`, en orden de dependencias.
-- **Peticiones de ejemplo**: `src/test/http/`, un `.http` por feature.
+- **Peticiones de ejemplo**: `src/test/http/`, un `.http` por feature. Primero se ejecuta el login de `tokens.http`, que guarda el token en `{{token}}`; las peticiones protegidas lo mandan con `Authorization: {{token}}`.
 
 ### Flecos de la fase 1
 
@@ -96,7 +114,7 @@ Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 
 | Fase | Pablo Mouriño | Pablo Collazo |
 |---|---|---|
-| 3. Tests | Grupo y aportación | Usuario, regalo y `UsuarioActualResolver` (401 sin cabecera / id inválido / usuario inexistente, 200 con usuario válido) |
+| 3. Tests | Grupo y aportación | Usuario, regalo y autenticación (`POST /tokens` correcto/incorrecto; 401 sin token / token inválido / usuario borrado; 200 con token válido) |
 | 4. Ampliación | Stripe Checkout test, webhooks, `EventoPago` | Scheduler de precios y alertas |
 | 5. Memoria | Grupo, aportación y pagos | Arquitectura, decisiones, usuario y regalo |
 
