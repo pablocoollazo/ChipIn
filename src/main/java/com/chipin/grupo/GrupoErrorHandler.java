@@ -65,4 +65,17 @@ public class GrupoErrorHandler {
                 .toUri());
         return ErrorResponse.builder(ex, problemDetail).build();
     }
+
+    @ExceptionHandler(MiembroNoEncontradoException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handle(MiembroNoEncontradoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problemDetail.setTitle("Miembro no encontrado");
+        problemDetail.setDetail("El usuario de id " + ex.getUsuarioId() + " no es miembro del grupo " + ex.getGrupoId() + ".");
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "miembro-no-encontrado")
+                .build()
+                .toUri());
+        return ErrorResponse.builder(ex, problemDetail).build();
+    }
 }

@@ -49,4 +49,12 @@ public class GrupoController {
     public ResponseEntity<List<MiembroDTO>> getMiembros(@PathVariable("id") Long id) throws GrupoNoEncontradoException {
         return ResponseEntity.ok(grupoService.getMiembros(id));
     }
+
+    // Endpoint que nos permite ver un miembro concreto del grupo
+    @GetMapping(path = "{id}/miembros/{usuarioId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<MiembroDTO> getMiembro(@PathVariable("id") Long grupoId,
+                                                 @PathVariable("usuarioId") Long usuarioId)
+            throws GrupoNoEncontradoException, MiembroNoEncontradoException {
+        return ResponseEntity.ok(grupoService.getMiembro(grupoId, usuarioId));
+    }
 }

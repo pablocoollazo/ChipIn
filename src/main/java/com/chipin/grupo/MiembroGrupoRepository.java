@@ -11,4 +11,6 @@ public interface MiembroGrupoRepository extends JpaRepository<MiembroGrupo, Miem
     // attributePaths indica que queremos traer el usuario asociado a cada miembro del grupo.
     @EntityGraph(attributePaths = {"usuario"})
     List<MiembroGrupo> findByGrupoId(Long grupoId);
+
+    MiembroDTO findById(Long usuarioId);
 }

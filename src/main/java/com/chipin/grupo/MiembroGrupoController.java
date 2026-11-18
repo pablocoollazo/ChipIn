@@ -29,7 +29,8 @@ public class MiembroGrupoController {
             YaEsMiembroException, UsuarioNoEncontradoException {
         MiembroDTO miembro = grupoService.join(peticion.codigoInvitacion(), peticion.usuarioId());
         return ResponseEntity
-                .created(MvcUriComponentsBuilder.fromMethodName(GrupoController.class, "getMiembros", miembro.grupoId()).build().toUri())
-                .body(miembro);
+                .created(MvcUriComponentsBuilder.
+                fromMethodName(GrupoController.class, "getMiembro", miembro.grupoId(), miembro.usuarioId()).
+                build().toUri()).body(miembro);
     }
 }

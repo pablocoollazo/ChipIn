@@ -111,4 +111,15 @@ public class GrupoService {
 
         return miembroGrupoRepository.findByGrupoId(grupoId).stream().map(MiembroDTO::from).toList();
     }
+
+    @Transactional(readOnly = true)
+    public MiembroDTO getMiembro(Long grupoId, Long usuarioId)
+            throws GrupoNoEncontradoException, MiembroNoEncontradoException{
+        if(!grupoRepository.existsById(grupoId)) {
+            throw new GrupoNoEncontradoException(grupoId);
+        }
+
+        return miembroGrupoRepository.findById(new MiembroGrupoId(grupoId, usuarioId)).map(MiembroDTO::from).
+                orElseThrow(() -> new MiembroNoEncontradoException(grupoId, usuarioId));
+    }
 }
