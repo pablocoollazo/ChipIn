@@ -1,0 +1,50 @@
+### Login correcto (204)
+POST http://localhost:8080/tokens
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "password": "1234"
+}
+
+> {%
+    client.global.set("token", response.headers.valueOf("Authorization"));
+%}
+
+### Usar el token en una ruta protegida (200)
+GET http://localhost:8080/usuarios
+Authorization: {{token}}
+
+### Ruta protegida sin token (401)
+GET http://localhost:8080/usuarios
+
+### Ruta protegida con token inválido (401)
+GET http://localhost:8080/usuarios
+Authorization: Bearer tokeninvalido
+
+### Login con contraseña incorrecta (401)
+POST http://localhost:8080/tokens
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "password": "incorrecta"
+}
+
+### Login con email inexistente (401)
+POST http://localhost:8080/tokens
+Content-Type: application/json
+
+{
+  "email": "nadie@test.com",
+  "password": "1234"
+}
+
+### Login con formato inválido (400)
+POST http://localhost:8080/tokens
+Content-Type: application/json
+
+{
+  "email": "noesunemail",
+  "password": ""
+}

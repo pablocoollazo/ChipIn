@@ -10,9 +10,12 @@ Course project for Service Engineering at USC, built by a team of two. Work in p
 |---|---|
 | User API (`GET /usuarios`, `GET /usuarios/{id}`, `POST /usuarios`) | Done |
 | Group data model | Done |
-| Group API | In progress |
-| Gifts, contributions, price alerts, Stripe test payments | Planned |
-| Authentication, frontend | Planned |
+| Group API | Done (follow-ups pending) |
+| Authentication (JWT, `POST /tokens`) | Done |
+| Gifts, contributions, price alerts | Planned |
+| Stripe test payments | Optional, if time allows |
+| API docs (Swagger / OpenAPI) | Planned |
+| Frontend (React, AI-assisted) | Planned |
 
 ## Tech stack
 

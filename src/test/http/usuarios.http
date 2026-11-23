@@ -31,9 +31,12 @@ Content-Type: application/json
 
 ### Listar usuarios paginados y ordenados por nombre descendente (200)
 GET http://localhost:8080/usuarios?page=0&size=10&sort=-nombre
+Authorization: {{token}}
 
 ### Obtener usuario por id (200)
 GET http://localhost:8080/usuarios/1
+Authorization: {{token}}
 
 ### Obtener usuario inexistente (404)
 GET http://localhost:8080/usuarios/999
+Authorization: {{token}}
