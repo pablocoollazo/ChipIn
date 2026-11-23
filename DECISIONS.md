@@ -17,6 +17,8 @@ Proyecto de una asignatura de 4,5 créditos, hecho en pareja. No es un TFG: alca
   - `config/`: solo configuración de Spring (`SeguridadConfig`, `WebConfig`, `ErrorController`).
 - Errores: cada feature tiene su propio `@RestControllerAdvice` en su paquete (`UsuarioErrorHandler`, `GrupoErrorHandler`…), para no editar los dos el mismo fichero. `ErrorController` se queda con el `401`/`403` y con los errores propios de Spring (validación, JSON mal formado, `405`, `415`…), y es el único que hereda de `ResponseEntityExceptionHandler`; si lo heredaran varios, competirían por los mismos errores.
 - Contraseñas hasheadas con BCrypt desde el principio (`usuario.password_hash` no nulo), antes incluso de tener Spring Security, para no tener que migrar datos ni cambiar el esquema al añadirlo.
+- **Documentación de la API con Swagger/OpenAPI** (springdoc), en la fase 3. Hay que dejar públicas en `SeguridadConfig` las rutas `/v3/api-docs/**` y `/swagger-ui/**` y declarar el esquema Bearer JWT, para poder probar los endpoints protegidos desde Swagger UI con el botón "Authorize".
+- **Frontend con ayuda de IA**: el foco de la asignatura es el backend REST, así que el frontend React se desarrolla apoyándose en herramientas de IA para no quitar tiempo al backend. Se declara aquí por transparencia.
 
 ## Autenticación (Spring Security + JWT)
 
@@ -35,6 +37,7 @@ Añadida en la rama `feature/auth`, cuando la asignatura llegó a seguridad. Has
   - Login fallido: mismo mensaje ("Email o contraseña incorrectos") tanto si el email no existe como si la contraseña es incorrecta, para no revelar qué emails están registrados (enumeración de usuarios).
   - Consecuencia conocida: una ruta inexistente sin token devuelve `401`, no `404`, porque la seguridad se comprueba antes de saber si la ruta existe.
 - **Pendiente**: refresh token (la propiedad `chipin.jwt.refresh-ttl` ya existe) y logout, en otra rama para que esta PR no crezca.
+- **Pendiente para el frontend**: configurar CORS y exponer la cabecera `Authorization` (`Access-Control-Expose-Headers`). Sin eso, el navegador no deja que React lea el token de la respuesta `204` del login.
 
 ## Convención de nombres
 
@@ -59,14 +62,14 @@ Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ─
 - **HistorialPrecio** + **AlertaPrecio**: seguimiento de precio del `Regalo`, con aviso configurable por umbral. `AlertaPrecio` guarda `precio_umbral`, si está `activa` y `fecha_disparo`; como máximo una alerta por usuario y regalo.
 - **Aportacion**: núcleo transaccional, con estado dual según método de pago:
   - Manual (Bizum/efectivo): `PENDIENTE → MARCADA_PAGADA → CONFIRMADA/RECHAZADA` (autoreporte del pagador + confirmación del organizador).
-  - Automático (Stripe, modo test): `PENDIENTE → PROCESANDO → COMPLETADA/FALLIDA/REEMBOLSADA` (confirmación vía webhook).
+  - Automático (Stripe, modo test): `PENDIENTE → PROCESANDO → COMPLETADA/FALLIDA/REEMBOLSADA` (confirmación vía webhook). **Opcional**: solo si da tiempo en la fase 4; el flujo manual es el obligatorio.
   - `clave_idempotencia` (única): guarda el header `Idempotency-Key` del `POST`. Si el cliente reintenta con la misma clave, se devuelve la aportación existente en vez de crear otra.
   - El bote de un grupo es la suma de `importe` de sus aportaciones en estado `CONFIRMADA` o `COMPLETADA`. No se guarda como columna.
-- **EventoPago**: log de webhooks de Stripe con `id_evento_externo` único, para no procesar el mismo pago dos veces (idempotencia).
+- **EventoPago**: log de webhooks de Stripe con `id_evento_externo` único, para no procesar el mismo pago dos veces (idempotencia). Solo se implementa si se hace Stripe (opcional).
 
 ### Por qué no Stripe Connect
 
-El caso de uso real implica que organizadores distintos (en grupos distintos) deberían cobrar cada uno a su propia cuenta — eso es exactamente lo que resuelve Stripe Connect, pero implementarlo (onboarding, verificación de identidad por usuario) es desproporcionado para 4,5 créditos. Se documenta como limitación conocida / trabajo futuro; en su lugar, Stripe se implementa en modo test contra una única cuenta como demostración técnica, y el flujo manual (Bizum/efectivo) es la vía real de uso.
+El caso de uso real implica que organizadores distintos (en grupos distintos) deberían cobrar cada uno a su propia cuenta — eso es exactamente lo que resuelve Stripe Connect, pero implementarlo (onboarding, verificación de identidad por usuario) es desproporcionado para 4,5 créditos. Se documenta como limitación conocida / trabajo futuro; en su lugar, Stripe se implementa en modo test contra una única cuenta como demostración técnica (opcional, si da tiempo), y el flujo manual (Bizum/efectivo) es la vía real de uso.
 
 ## Reglas de diseño REST (Tema 3 de la asignatura)
 
@@ -87,7 +90,7 @@ Repartido según quién conoce mejor el código del que depende cada rama, y equ
 
 | Rama | Responsable | Contenido | Ampliación (fase 4) |
 |---|---|---|---|
-| `feature/aportacion` | Pablo Mouriño (`Pablomou6`) | `Aportacion`, `MetodoPago`, `EstadoAportacion`; `POST /grupos/{id}/aportaciones` con `Idempotency-Key`; flujo manual por `PATCH` con transiciones validadas; total del bote calculado | Stripe Checkout en modo test, webhooks y `EventoPago` |
+| `feature/aportacion` | Pablo Mouriño (`Pablomou6`) | `Aportacion`, `MetodoPago`, `EstadoAportacion`; `POST /grupos/{id}/aportaciones` con `Idempotency-Key`; flujo manual por `PATCH` con transiciones validadas; total del bote calculado | Opcional, si da tiempo: Stripe Checkout en modo test, webhooks y `EventoPago` |
 | `feature/regalo` | Pablo Collazo (`pablocoollazo`) | `Regalo` (`PUT/GET/DELETE /grupos/{id}/regalo`), `HistorialPrecio` (`GET .../regalo/historial-precios`), `AlertaPrecio` (CRUD, una por usuario y regalo) | Scheduler que actualiza precios y dispara alertas |
 
 El autor de grupo hace aportación porque esta depende de `Grupo`/`MiembroGrupo` (pertenencia, estado `ABIERTO`, creador como confirmador). Regalo solo necesita que el grupo exista.
@@ -115,7 +118,7 @@ Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 | Fase | Pablo Mouriño | Pablo Collazo |
 |---|---|---|
 | 3. Tests | Grupo y aportación | Usuario, regalo y autenticación (`POST /tokens` correcto/incorrecto; 401 sin token / token inválido / usuario borrado; 200 con token válido) |
-| 4. Ampliación | Stripe Checkout test, webhooks, `EventoPago` | Scheduler de precios y alertas |
+| 4. Ampliación | Opcional, si da tiempo: Stripe Checkout test, webhooks, `EventoPago` | Scheduler de precios y alertas |
 | 5. Memoria | Grupo, aportación y pagos | Arquitectura, decisiones, usuario y regalo |
 
 ## Roadmap
@@ -125,6 +128,7 @@ Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 | 0. Base | Proyecto Spring Boot + Postgres | ✅ Hecho |
 | 1. Núcleo | `Usuario`, `Grupo`, `EstadoGrupo`, `MiembroGrupo` | ✅ Mergeado (PRs #2–#6); flecos pendientes repartidos en fase 2 |
 | 2. Regalo + Aportación | En paralelo, 2 ramas (ver reparto) | 🔲 Pendiente |
-| 3. Testing y pulido | Tests unitarios e integración | 🔲 Pendiente |
-| 4. Ampliación | Scheduler de precios, Stripe Checkout test | 🔲 Pendiente |
+| 3. Testing y pulido | Tests unitarios e integración; documentación de la API con Swagger/OpenAPI | 🔲 Pendiente |
+| 4. Ampliación | Scheduler de precios; Stripe Checkout test (opcional, si da tiempo) | 🔲 Pendiente |
 | 5. Documentación de cierre | Memoria de la asignatura | 🔲 Pendiente |
+| 6. Frontend | React, con ayuda de herramientas de IA (ver Arquitectura); requiere CORS en el backend | 🔲 Pendiente |
