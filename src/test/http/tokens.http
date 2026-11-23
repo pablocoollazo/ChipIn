@@ -3,7 +3,7 @@ POST http://localhost:8080/tokens
 Content-Type: application/json
 
 {
-  "email": "luis@test.com",
+  "email": "john.doe@example.com",
   "password": "1234"
 }
 
@@ -27,7 +27,7 @@ POST http://localhost:8080/tokens
 Content-Type: application/json
 
 {
-  "email": "luis@test.com",
+  "email": "john.doe@example.com",
   "password": "incorrecta"
 }
 
