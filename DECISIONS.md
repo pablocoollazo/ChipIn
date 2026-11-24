@@ -71,6 +71,18 @@ Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ─
 
 El caso de uso real implica que organizadores distintos (en grupos distintos) deberían cobrar cada uno a su propia cuenta — eso es exactamente lo que resuelve Stripe Connect, pero implementarlo (onboarding, verificación de identidad por usuario) es desproporcionado para 4,5 créditos. Se documenta como limitación conocida / trabajo futuro; en su lugar, Stripe se implementa en modo test contra una única cuenta como demostración técnica (opcional, si da tiempo), y el flujo manual (Bizum/efectivo) es la vía real de uso.
 
+### Modificación y borrado de usuarios
+
+- **Solo sobre uno mismo**: `PUT` y `DELETE /usuarios/{id}` exigen que `id` sea el usuario del token; si no, `403` (`SinPermisoException`). El orden de comprobación es `404` → `403` → `409`.
+- **`PUT` es sustitución completa**: nombre, email y contraseña son obligatorios (la contraseña se vuelve a hashear). Cambiar solo algún campo será el `PATCH` con JSON Patch. El email no puede coincidir con el de **otro** usuario (`existsByEmailAndIdNot`), pero sí mantenerse el propio.
+- **Borrado**:
+  - Si el usuario es **creador** de algún grupo → `409` (`UsuarioConGruposException`). El creador es quien confirma las aportaciones; borrarlo dejaría botes de otras personas sin organizador.
+  - Si solo es **miembro**, se borran primero sus filas de `miembro_grupo` y después el usuario, en una misma transacción (`@Transactional`). Así no falla por la foreign key.
+  - Descartados: el borrado en cascada (haría desaparecer grupos y aportaciones de otras personas) y el borrado lógico (`activo`/`fecha_baja`), que obligaría a cambiar el esquema y a filtrar en todas las consultas. Es demasiado para el alcance del proyecto.
+  - Cuando exista `Aportacion`, habrá que decidir qué pasa con las de un usuario que se borra: bloquear también con `409` o borrarlas.
+  - Consecuencia: `usuario/` depende de `GrupoRepository` y `MiembroGrupoRepository` (`existsByCreadorId`, `deleteByUsuarioId`).
+- Un token sigue siendo válido aunque su usuario se haya borrado, pero `UsuarioActualResolver` lo rechaza con `401` (ver Autenticación).
+
 ## Reglas de diseño REST (Tema 3 de la asignatura)
 
 - URLs en minúsculas, con guiones, sin verbos, sin barra final. Colecciones en plural (`/grupos`, `/aportaciones`); filtros en query string, nunca en el path.
@@ -111,7 +123,7 @@ Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 | Responsable | Pendiente |
 |---|---|
 | Pablo Mouriño | Grupo: `GET /grupos?usuarioId=` (mis grupos), `PATCH /grupos/{id}` (JSON Patch, incluido cambio de `estado`), `DELETE /grupos/{id}/miembros/{usuarioId}` (salir del grupo), asignar `cuota_asignada`; el `Location` de unirse debe apuntar al miembro creado, no a la colección; usar `@UsuarioActual` en `POST /grupos` y `POST /miembros` (quitar `creadorId`/`usuarioId` del body); issue #7 (`fechaUnion` a `null` al unirse) |
-| Pablo Collazo | Usuario: `PUT`, `PATCH` (JSON Patch) y `DELETE /usuarios/{id}` |
+| Pablo Collazo | Usuario: ~~`PUT`~~ y ~~`DELETE /usuarios/{id}`~~ ✅ (rama `feature/usuario-crud`, con tests de integración de `UsuarioService`); falta `PATCH` (JSON Patch) |
 
 ### Resto de fases
 

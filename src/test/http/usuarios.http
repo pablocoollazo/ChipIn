@@ -40,3 +40,98 @@ Authorization: {{token}}
 ### Obtener usuario inexistente (404)
 GET http://localhost:8080/usuarios/999
 Authorization: {{token}}
+
+### Actualizar mi usuario (200)
+PUT http://localhost:8080/usuarios/1
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "nombre": "John Doe Actualizado",
+  "email": "john.doe@example.com",
+  "password": "1234"
+}
+
+### Actualizar otro usuario (403)
+PUT http://localhost:8080/usuarios/2
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "nombre": "Jane Smith",
+  "email": "jane.smith@example.com",
+  "password": "1234"
+}
+
+### Actualizar usuario inexistente (404)
+PUT http://localhost:8080/usuarios/999
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "nombre": "Nadie",
+  "email": "nadie@test.com",
+  "password": "1234"
+}
+
+### Actualizar mi usuario con el email de otro (409)
+PUT http://localhost:8080/usuarios/1
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "nombre": "John Doe",
+  "email": "jane.smith@example.com",
+  "password": "1234"
+}
+
+### Actualizar mi usuario sin contraseña (400)
+PUT http://localhost:8080/usuarios/1
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "nombre": "John Doe",
+  "email": "john.doe@example.com"
+}
+
+### Actualizar usuario sin token (401)
+PUT http://localhost:8080/usuarios/1
+Content-Type: application/json
+
+{
+  "nombre": "John Doe",
+  "email": "john.doe@example.com",
+  "password": "1234"
+}
+
+### Borrar mi usuario siendo creador de un grupo (409)
+DELETE http://localhost:8080/usuarios/1
+Authorization: {{token}}
+
+### Borrar otro usuario (403)
+DELETE http://localhost:8080/usuarios/2
+Authorization: {{token}}
+
+### Borrar usuario inexistente (404)
+DELETE http://localhost:8080/usuarios/999
+Authorization: {{token}}
+
+### Borrar usuario sin token (401)
+DELETE http://localhost:8080/usuarios/1
+
+### Jane borra su usuario, solo era miembro de un grupo (204). Requiere el login de Jane en tokens.http
+DELETE http://localhost:8080/usuarios/2
+Authorization: {{tokenJane}}
+
+### Jane repite el borrado con su token: su usuario ya no existe (401)
+DELETE http://localhost:8080/usuarios/2
+Authorization: {{tokenJane}}
+
+### Usuario borrado (404)
+GET http://localhost:8080/usuarios/2
+Authorization: {{token}}
+
+### Jane ya no aparece entre los miembros del grupo 1 (200, solo John)
+GET http://localhost:8080/grupos/1/miembros
+Authorization: {{token}}

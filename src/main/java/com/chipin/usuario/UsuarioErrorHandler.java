@@ -41,4 +41,19 @@ public class UsuarioErrorHandler {
 
         return ErrorResponse.builder(ex, problemDetail).build();
     }
+
+    @ExceptionHandler(UsuarioConGruposException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handle(UsuarioConGruposException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problemDetail.setTitle("Usuario creador de grupos");
+        problemDetail.setDetail(
+                "El usuario con id " + ex.getId() + " es creador de al menos un grupo y no se puede borrar");
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "usuario-con-grupos")
+                .build()
+                .toUri());
+
+        return ErrorResponse.builder(ex, problemDetail).build();
+    }
 }
