@@ -26,8 +26,9 @@ Añadida en la rama `feature/auth`, cuando la asignatura llegó a seguridad. Has
 
 - **API sin estado**: sesión `STATELESS` y CSRF desactivado (no hay cookies de sesión que proteger). Cada petición se autentica con `Authorization: Bearer <token>`.
 - **Rutas públicas**: `POST /usuarios` (registro), `POST /tokens` (login) y `/error`. Todo lo demás exige token.
-- **Token**: JWT firmado con **RS256** (par de claves RSA de 2048 bits en un keystore PKCS12, `src/main/resources/jwt.p12`). El `subject` es el id del usuario y dura 15 minutos (`chipin.jwt.access-ttl`). Se usa clave asimétrica para que, si otro servicio tuviera que verificar tokens, le bastara la clave pública.
-  - Limitación: el keystore y su contraseña están en el repo porque es de desarrollo. En producción irían fuera (variables de entorno o un gestor de secretos).
+- **Token**: JWT firmado con **RS256** (par de claves RSA de 2048 bits generado en memoria al arrancar). El `subject` es el id del usuario y dura 15 minutos (`chipin.jwt.access-ttl`). Se usa clave asimétrica para que, si otro servicio tuviera que verificar tokens, le bastara la clave pública.
+  - Al principio el par estaba en un keystore `jwt.p12` versionado con su contraseña en `application.properties`. Como el repo es público, esa clave quedó expuesta en el historial (aviso de GitGuardian), así que se descartó y ya no se usa. Generar el par al arrancar evita guardar secretos en el repo y no exige configuración a nadie.
+  - Limitación: al reiniciar la app los tokens emitidos dejan de ser válidos. En producción el par se cargaría de fuera del repo (variables de entorno o un gestor de secretos).
 - **Login: `POST /tokens`**, con email y contraseña en el body. Responde **`204 No Content`** con el token en la cabecera `Authorization`, igual que el proyecto de ejemplo de la asignatura.
   - Ruta `/tokens` y no `/auth/login` (la del ejemplo) para respetar la regla de URLs sin verbos: el `POST` crea un token.
   - `204` y no `201`: el token no es un recurso que se pueda consultar después con `GET`, así que no hay `Location` coherente que devolver.
