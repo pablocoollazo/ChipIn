@@ -64,3 +64,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Keystores (nunca al repo)
+*.p12
