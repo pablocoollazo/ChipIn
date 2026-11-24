@@ -2,6 +2,8 @@ package com.chipin.usuario;
 
 import com.chipin.auth.SinPermisoException;
 import com.chipin.auth.UsuarioActual;
+import com.chipin.patch.OperacionPatch;
+import com.chipin.patch.PatchInvalidoException;
 import jakarta.validation.Valid;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +61,13 @@ public class UsuarioController {
             @PathVariable("id") Long id, @RequestBody @Valid UsuarioDTO usuarioDTO, @UsuarioActual Long usuarioActual)
             throws UsuarioNoEncontradoException, SinPermisoException, EmailDuplicadoException {
         return ResponseEntity.ok(usuarioService.update(id, usuarioDTO, usuarioActual));
+    }
+
+    @PatchMapping(path = "{id}", consumes = "application/json-patch+json", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<UsuarioDTO> patch(
+            @PathVariable("id") Long id, @RequestBody List<OperacionPatch> operaciones, @UsuarioActual Long usuarioActual)
+            throws UsuarioNoEncontradoException, SinPermisoException, PatchInvalidoException, EmailDuplicadoException {
+        return ResponseEntity.ok(usuarioService.patch(id, operaciones, usuarioActual));
     }
 
     @DeleteMapping(path = "{id}")
