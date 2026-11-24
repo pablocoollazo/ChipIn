@@ -3,11 +3,17 @@ package com.chipin.usuario;
 import com.chipin.auth.SinPermisoException;
 import com.chipin.grupo.MiembroGrupoId;
 import com.chipin.grupo.MiembroGrupoRepository;
+import com.chipin.patch.OperacionPatch;
+import com.chipin.patch.PatchInvalidoException;
+import com.chipin.patch.TipoOperacionPatch;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.node.StringNode;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -114,6 +120,68 @@ class UsuarioServiceTest {
     void updateConEmailDeOtroUsuarioLanza409() {
         assertThrows(EmailDuplicadoException.class, () -> usuarioService.update(
                 JOHN, datos("John Doe", "jane.smith@example.com", "1234"), JOHN));
+    }
+
+    // --- patch ---
+
+    private static OperacionPatch replace(String path, String valor) {
+        return new OperacionPatch(TipoOperacionPatch.REPLACE, path, StringNode.valueOf(valor));
+    }
+
+    private static OperacionPatch add(String path, String valor) {
+        return new OperacionPatch(TipoOperacionPatch.ADD, path, StringNode.valueOf(valor));
+    }
+
+    @Test
+    void patchCambiaSoloElCampoIndicadoYMantieneLaPassword() throws Exception {
+        String hashAntes = usuarioRepository.findById(JOHN).orElseThrow().getPasswordHash();
+
+        UsuarioDTO resultado = usuarioService.patch(JOHN, List.of(replace("/nombre", "Johnny")), JOHN);
+
+        assertEquals("Johnny", resultado.nombre());
+        assertEquals("john.doe@example.com", resultado.email());
+        assertEquals(hashAntes, usuarioRepository.findById(JOHN).orElseThrow().getPasswordHash());
+    }
+
+    @Test
+    void patchConPasswordLaGuardaHasheada() throws Exception {
+        usuarioService.patch(JOHN, List.of(add("/password", "nueva")), JOHN);
+
+        assertTrue(passwordEncoder.matches("nueva", usuarioRepository.findById(JOHN).orElseThrow().getPasswordHash()));
+    }
+
+    @Test
+    void patchDeIdOFechaRegistroLanza400() {
+        assertThrows(PatchInvalidoException.class,
+                () -> usuarioService.patch(JOHN, List.of(replace("/id", "5")), JOHN));
+        assertThrows(PatchInvalidoException.class,
+                () -> usuarioService.patch(JOHN, List.of(replace("/fechaRegistro", "2020-01-01T00:00:00Z")), JOHN));
+    }
+
+    @Test
+    void patchQueDejaElUsuarioInvalidoLanza400() {
+        assertThrows(PatchInvalidoException.class,
+                () -> usuarioService.patch(JOHN, List.of(replace("/email", "noesunemail")), JOHN));
+        assertThrows(PatchInvalidoException.class, () -> usuarioService.patch(
+                JOHN, List.of(new OperacionPatch(TipoOperacionPatch.REMOVE, "/nombre", null)), JOHN));
+    }
+
+    @Test
+    void patchConEmailDeOtroUsuarioLanza409() {
+        assertThrows(EmailDuplicadoException.class,
+                () -> usuarioService.patch(JOHN, List.of(replace("/email", "jane.smith@example.com")), JOHN));
+    }
+
+    @Test
+    void patchDeOtroUsuarioLanza403() {
+        assertThrows(SinPermisoException.class,
+                () -> usuarioService.patch(JANE, List.of(replace("/nombre", "X")), JOHN));
+    }
+
+    @Test
+    void patchDeUsuarioInexistenteLanza404() {
+        assertThrows(UsuarioNoEncontradoException.class,
+                () -> usuarioService.patch(INEXISTENTE, List.of(replace("/nombre", "X")), INEXISTENTE));
     }
 
     // --- delete ---
