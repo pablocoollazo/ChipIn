@@ -104,3 +104,34 @@ Content-Type: application/json
   "email": "john.doe@example.com",
   "password": "1234"
 }
+
+### Borrar mi usuario siendo creador de un grupo (409)
+DELETE http://localhost:8080/usuarios/1
+Authorization: {{token}}
+
+### Borrar otro usuario (403)
+DELETE http://localhost:8080/usuarios/2
+Authorization: {{token}}
+
+### Borrar usuario inexistente (404)
+DELETE http://localhost:8080/usuarios/999
+Authorization: {{token}}
+
+### Borrar usuario sin token (401)
+DELETE http://localhost:8080/usuarios/1
+
+### Jane borra su usuario, solo era miembro de un grupo (204). Requiere el login de Jane en tokens.http
+DELETE http://localhost:8080/usuarios/2
+Authorization: {{tokenJane}}
+
+### Jane repite el borrado con su token: su usuario ya no existe (401)
+DELETE http://localhost:8080/usuarios/2
+Authorization: {{tokenJane}}
+
+### Usuario borrado (404)
+GET http://localhost:8080/usuarios/2
+Authorization: {{token}}
+
+### Jane ya no aparece entre los miembros del grupo 1 (200, solo John)
+GET http://localhost:8080/grupos/1/miembros
+Authorization: {{token}}
