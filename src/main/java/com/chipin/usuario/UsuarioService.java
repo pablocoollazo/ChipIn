@@ -1,5 +1,6 @@
 package com.chipin.usuario;
 
+import com.chipin.auth.SinPermisoException;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -24,7 +25,10 @@ public class UsuarioService {
     }
 
     public UsuarioDTO get(Long id) throws UsuarioNoEncontradoException {
-        return usuarioRepository.findById(id).map(UsuarioDTO::from).orElseThrow(() -> new UsuarioNoEncontradoException(id));
+        return usuarioRepository
+                .findById(id)
+                .map(UsuarioDTO::from)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(id));
     }
 
     public UsuarioDTO create(UsuarioDTO usuario) throws EmailDuplicadoException {
@@ -34,4 +38,20 @@ public class UsuarioService {
         return UsuarioDTO.from(usuarioRepository.save(Usuario.from(usuario, passwordEncoder)));
     }
 
+    public UsuarioDTO update(Long id, UsuarioDTO dto, Long usuarioActual)
+            throws UsuarioNoEncontradoException, SinPermisoException, EmailDuplicadoException {
+        Usuario usuario = usuarioRepository.findById(id).orElseThrow(() -> new UsuarioNoEncontradoException(id));
+        if (!id.equals(usuarioActual)) {
+            throw new SinPermisoException("Solo puedes modificar tu propio usuario");
+        }
+
+        if (usuarioRepository.existsByEmailAndIdNot(dto.email(), id)) {
+            throw new EmailDuplicadoException(dto.email());
+        }
+
+        usuario.setEmail(dto.email());
+        usuario.setNombre(dto.nombre());
+        usuario.setPasswordHash(passwordEncoder.encode(dto.password()));
+        return UsuarioDTO.from(usuarioRepository.save(usuario));
+    }
 }
