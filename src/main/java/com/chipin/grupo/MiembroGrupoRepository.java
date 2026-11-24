@@ -3,7 +3,8 @@ package com.chipin.grupo;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import java.util.*;
+
+import java.util.List;
 
 @Repository
 public interface MiembroGrupoRepository extends JpaRepository<MiembroGrupo, MiembroGrupoId> {
@@ -11,4 +12,6 @@ public interface MiembroGrupoRepository extends JpaRepository<MiembroGrupo, Miem
     // attributePaths indica que queremos traer el usuario asociado a cada miembro del grupo.
     @EntityGraph(attributePaths = {"usuario"})
     List<MiembroGrupo> findByGrupoId(Long grupoId);
+
+    void deleteByUsuarioId(Long usuarioId);
 }

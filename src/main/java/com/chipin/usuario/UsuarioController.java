@@ -60,4 +60,11 @@ public class UsuarioController {
             throws UsuarioNoEncontradoException, SinPermisoException, EmailDuplicadoException {
         return ResponseEntity.ok(usuarioService.update(id, usuarioDTO, usuarioActual));
     }
+
+    @DeleteMapping(path = "{id}")
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id, @UsuarioActual Long usuarioActual)
+            throws UsuarioNoEncontradoException, SinPermisoException, UsuarioConGruposException {
+        usuarioService.delete(id, usuarioActual);
+        return ResponseEntity.noContent().build();
+    }
 }
