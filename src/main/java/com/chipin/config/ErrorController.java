@@ -2,6 +2,7 @@ package com.chipin.config;
 
 import com.chipin.auth.NoAutenticadoException;
 import com.chipin.auth.SinPermisoException;
+import com.chipin.patch.PatchInvalidoException;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,6 +38,19 @@ public class ErrorController extends ResponseEntityExceptionHandler {
         problemDetail.setDetail(ex.getMessage());
         problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
                 .pathSegment("error", "sin-permiso")
+                .build()
+                .toUri());
+        return ErrorResponse.builder(ex, problemDetail).build();
+    }
+
+    @ExceptionHandler(PatchInvalidoException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handle(PatchInvalidoException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problemDetail.setTitle("Patch no válido");
+        problemDetail.setDetail(ex.getMessage());
+        problemDetail.setType(MvcUriComponentsBuilder.fromController(ErrorController.class)
+                .pathSegment("error", "patch-invalido")
                 .build()
                 .toUri());
         return ErrorResponse.builder(ex, problemDetail).build();
