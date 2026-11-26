@@ -13,4 +13,6 @@ public interface GrupoRepository extends JpaRepository<Grupo, Long> {
     Optional<Grupo> findByCodigoInvitacion(String codigoInvitacion);
 
     boolean existsByCodigoInvitacion(String codigoInvitacion);
+
+    boolean existsByCreadorId(Long usuarioId);
 }

@@ -48,3 +48,16 @@ Content-Type: application/json
   "email": "noesunemail",
   "password": ""
 }
+
+### Login como Jane, que solo es miembro de un grupo (204). Guarda tokenJane para probar el DELETE de usuarios
+POST http://localhost:8080/tokens
+Content-Type: application/json
+
+{
+  "email": "jane.smith@example.com",
+  "password": "1234"
+}
+
+> {%
+    client.global.set("tokenJane", response.headers.valueOf("Authorization"));
+%}

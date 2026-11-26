@@ -15,6 +15,7 @@ Proyecto de una asignatura de 4,5 créditos, hecho en pareja. No es un TFG: alca
 - Paquetes transversales, fuera de las features:
   - `auth/`: todo lo de "quién hace la petición": login (`AutenticacionController`, `AutenticacionService`, `AutenticacionDTO`), JWT (`JwtService`, `JwtAuthenticationFilter`, `JwtAuthenticationEntryPoint`), `@UsuarioActual` + `UsuarioActualResolver`, `NoAutenticadoException` y `SinPermisoException`. Separado para que el cambio de cabecera provisional a JWT solo tocara este paquete (y así fue: ningún controller cambió).
   - `config/`: solo configuración de Spring (`SeguridadConfig`, `WebConfig`, `ErrorController`).
+  - `patch/`: utilidad de JSON Patch compartida por todos los `PATCH` (ver [JSON Patch](#json-patch)). Su `PatchInvalidoException` la convierte en `400` el `ErrorController`.
 - Errores: cada feature tiene su propio `@RestControllerAdvice` en su paquete (`UsuarioErrorHandler`, `GrupoErrorHandler`…), para no editar los dos el mismo fichero. `ErrorController` se queda con el `401`/`403` y con los errores propios de Spring (validación, JSON mal formado, `405`, `415`…), y es el único que hereda de `ResponseEntityExceptionHandler`; si lo heredaran varios, competirían por los mismos errores.
 - Contraseñas hasheadas con BCrypt desde el principio (`usuario.password_hash` no nulo), antes incluso de tener Spring Security, para no tener que migrar datos ni cambiar el esquema al añadirlo.
 - **Documentación de la API con Swagger/OpenAPI** (springdoc), en la fase 3. Hay que dejar públicas en `SeguridadConfig` las rutas `/v3/api-docs/**` y `/swagger-ui/**` y declarar el esquema Bearer JWT, para poder probar los endpoints protegidos desde Swagger UI con el botón "Authorize".
@@ -71,6 +72,29 @@ Usuario ──< MiembroGrupo >── Grupo ──(1:1 opcional)── Regalo ─
 
 El caso de uso real implica que organizadores distintos (en grupos distintos) deberían cobrar cada uno a su propia cuenta — eso es exactamente lo que resuelve Stripe Connect, pero implementarlo (onboarding, verificación de identidad por usuario) es desproporcionado para 4,5 créditos. Se documenta como limitación conocida / trabajo futuro; en su lugar, Stripe se implementa en modo test contra una única cuenta como demostración técnica (opcional, si da tiempo), y el flujo manual (Bizum/efectivo) es la vía real de uso.
 
+### Modificación y borrado de usuarios
+
+- **Solo sobre uno mismo**: `PUT`, `PATCH` y `DELETE /usuarios/{id}` exigen que `id` sea el usuario del token; si no, `403` (`SinPermisoException`). El orden de comprobación es `404` → `403` → `409`.
+- **`PUT` es sustitución completa**: nombre, email y contraseña son obligatorios (la contraseña se vuelve a hashear). Para cambiar solo algún campo está el `PATCH`. El email no puede coincidir con el de **otro** usuario (`existsByEmailAndIdNot`), pero sí mantenerse el propio.
+- **`PATCH`** (JSON Patch): solo admite `/nombre`, `/email` y `/password`; cualquier otra ruta (`/id`, `/fechaRegistro`…) da `400`. El JSON del usuario no lleva la contraseña (`WRITE_ONLY`), así que solo cambia si el patch la añade (`add`/`replace` de `/password`), y entonces se hashea; si no, se mantiene la actual. Como no hay `@Valid` sobre el body, el resultado se valida a mano con el `Validator` de Jakarta (nombre, email y, si viene, la contraseña): `400` si queda inválido. Email duplicado → `409`, igual que en el `PUT`.
+- **Borrado**:
+  - Si el usuario es **creador** de algún grupo → `409` (`UsuarioConGruposException`). El creador es quien confirma las aportaciones; borrarlo dejaría botes de otras personas sin organizador.
+  - Si solo es **miembro**, se borran primero sus filas de `miembro_grupo` y después el usuario, en una misma transacción (`@Transactional`). Así no falla por la foreign key.
+  - Descartados: el borrado en cascada (haría desaparecer grupos y aportaciones de otras personas) y el borrado lógico (`activo`/`fecha_baja`), que obligaría a cambiar el esquema y a filtrar en todas las consultas. Es demasiado para el alcance del proyecto.
+  - Cuando exista `Aportacion`, habrá que decidir qué pasa con las de un usuario que se borra: bloquear también con `409` o borrarlas.
+  - Consecuencia: `usuario/` depende de `GrupoRepository` y `MiembroGrupoRepository` (`existsByCreadorId`, `deleteByUsuarioId`).
+- Un token sigue siendo válido aunque su usuario se haya borrado, pero `UsuarioActualResolver` lo rechaza con `401` (ver Autenticación).
+
+### JSON Patch
+
+- Los `PATCH` usan JSON Patch (RFC 6902): body con una lista de operaciones y `Content-Type: application/json-patch+json` (con `application/json` → `415`).
+- Implementación propia en `patch/` (`JsonPatch`, `OperacionPatch`, `TipoOperacionPatch`, `PatchInvalidoException`), como en el proyecto de ejemplo de la asignatura, pero reducida a lo que necesita ChipIn:
+  - Solo `add`, `remove` y `replace`. `move`, `copy` y `test` no se admiten (`400` al leer el body). Limitación consciente: los recursos son objetos planos y basta con esas tres.
+  - Solo campos de primer nivel (`/nombre`); rutas anidadas o de arrays → `400`.
+  - `replace` y `remove` exigen que el campo exista; `add` y `replace` exigen `value`.
+- Uso desde un servicio: convertir el DTO a `ObjectNode` con el `JsonMapper`, aplicar `JsonPatch.aplicar`, convertir de vuelta al DTO, y validar. Cada servicio decide qué rutas son modificables (lista blanca), para que no se pueda tocar `id`, fechas o campos que gestiona el servidor. Ejemplo: `UsuarioService.patch`.
+- Pensada para reutilizarse en `PATCH /grupos/{id}` y en las transiciones de `Aportacion`.
+
 ## Reglas de diseño REST (Tema 3 de la asignatura)
 
 - URLs en minúsculas, con guiones, sin verbos, sin barra final. Colecciones en plural (`/grupos`, `/aportaciones`); filtros en query string, nunca en el path.
@@ -111,7 +135,7 @@ Cada rama incluye su fichero `.http` y tests de integración de su servicio.
 | Responsable | Pendiente |
 |---|---|
 | Pablo Mouriño | Grupo: `GET /grupos?usuarioId=` (mis grupos), `PATCH /grupos/{id}` (JSON Patch, incluido cambio de `estado`), `DELETE /grupos/{id}/miembros/{usuarioId}` (salir del grupo), asignar `cuota_asignada`; el `Location` de unirse debe apuntar al miembro creado, no a la colección; usar `@UsuarioActual` en `POST /grupos` y `POST /miembros` (quitar `creadorId`/`usuarioId` del body); issue #7 (`fechaUnion` a `null` al unirse) |
-| Pablo Collazo | Usuario: `PUT`, `PATCH` (JSON Patch) y `DELETE /usuarios/{id}` |
+| Pablo Collazo | Usuario: ~~`PUT`~~, ~~`DELETE`~~ (rama `feature/usuario-crud`) y ~~`PATCH /usuarios/{id}`~~ con la utilidad compartida de JSON Patch (rama `feature/usuario-patch`) ✅, con tests |
 
 ### Resto de fases
 
