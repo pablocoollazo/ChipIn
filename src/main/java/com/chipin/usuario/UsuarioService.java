@@ -95,9 +95,12 @@ public class UsuarioService {
             throw new SinPermisoException("Solo puedes modificar tu propio usuario");
         }
         for (OperacionPatch operacion : operaciones) {
+            if (operacion.path() == null) {
+                throw new PatchInvalidoException("Falta la ruta (path)");
+            }
             if (!CAMPOS_MODIFICABLES.contains(operacion.path())) {
-                throw new PatchInvalidoException(
-                        "No se puede modificar " + operacion.path() + ". Campos modificables: /nombre, /email, /password");
+                throw new PatchInvalidoException("No se puede modificar " + operacion.path()
+                        + ". Campos modificables: /nombre, /email, /password");
             }
         }
 
@@ -107,7 +110,8 @@ public class UsuarioService {
         try {
             resultado = jsonMapper.treeToValue(JsonPatch.aplicar(operaciones, documento), UsuarioDTO.class);
         } catch (JacksonException e) {
-            throw new PatchInvalidoException("El resultado del patch no es un usuario válido: " + e.getOriginalMessage());
+            throw new PatchInvalidoException(
+                    "El resultado del patch no es un usuario válido: " + e.getOriginalMessage());
         }
         validar(resultado);
 

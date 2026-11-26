@@ -15,12 +15,7 @@ import tools.jackson.databind.node.StringNode;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests de integración contra el Postgres local (docker compose up -d).
@@ -38,10 +33,13 @@ class UsuarioServiceTest {
 
     @Autowired
     private UsuarioService usuarioService;
+
     @Autowired
     private UsuarioRepository usuarioRepository;
+
     @Autowired
     private MiembroGrupoRepository miembroGrupoRepository;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -78,7 +76,8 @@ class UsuarioServiceTest {
 
     @Test
     void createConEmailDuplicadoLanza409() {
-        assertThrows(EmailDuplicadoException.class,
+        assertThrows(
+                EmailDuplicadoException.class,
                 () -> usuarioService.create(datos("Otro John", "john.doe@example.com", "1234")));
     }
 
@@ -86,8 +85,8 @@ class UsuarioServiceTest {
 
     @Test
     void updateSustituyeNombreEmailYPassword() throws Exception {
-        UsuarioDTO actualizado = usuarioService.update(
-                JOHN, datos("John Nuevo", "john.nuevo@example.com", "nueva"), JOHN);
+        UsuarioDTO actualizado =
+                usuarioService.update(JOHN, datos("John Nuevo", "john.nuevo@example.com", "nueva"), JOHN);
 
         assertEquals(JOHN, actualizado.id());
         assertEquals("John Nuevo", actualizado.nombre());
@@ -98,28 +97,30 @@ class UsuarioServiceTest {
 
     @Test
     void updateManteniendoSuPropioEmailNoEsDuplicado() throws Exception {
-        UsuarioDTO actualizado = usuarioService.update(
-                JOHN, datos("John Doe", "john.doe@example.com", "1234"), JOHN);
+        UsuarioDTO actualizado = usuarioService.update(JOHN, datos("John Doe", "john.doe@example.com", "1234"), JOHN);
 
         assertEquals("john.doe@example.com", actualizado.email());
     }
 
     @Test
     void updateDeOtroUsuarioLanza403() {
-        assertThrows(SinPermisoException.class, () -> usuarioService.update(
-                JANE, datos("Jane", "jane.smith@example.com", "1234"), JOHN));
+        assertThrows(
+                SinPermisoException.class,
+                () -> usuarioService.update(JANE, datos("Jane", "jane.smith@example.com", "1234"), JOHN));
     }
 
     @Test
     void updateDeUsuarioInexistenteLanza404() {
-        assertThrows(UsuarioNoEncontradoException.class, () -> usuarioService.update(
-                INEXISTENTE, datos("Nadie", "nadie@test.com", "1234"), INEXISTENTE));
+        assertThrows(
+                UsuarioNoEncontradoException.class,
+                () -> usuarioService.update(INEXISTENTE, datos("Nadie", "nadie@test.com", "1234"), INEXISTENTE));
     }
 
     @Test
     void updateConEmailDeOtroUsuarioLanza409() {
-        assertThrows(EmailDuplicadoException.class, () -> usuarioService.update(
-                JOHN, datos("John Doe", "jane.smith@example.com", "1234"), JOHN));
+        assertThrows(
+                EmailDuplicadoException.class,
+                () -> usuarioService.update(JOHN, datos("John Doe", "jane.smith@example.com", "1234"), JOHN));
     }
 
     // --- patch ---
@@ -147,41 +148,58 @@ class UsuarioServiceTest {
     void patchConPasswordLaGuardaHasheada() throws Exception {
         usuarioService.patch(JOHN, List.of(add("/password", "nueva")), JOHN);
 
-        assertTrue(passwordEncoder.matches("nueva", usuarioRepository.findById(JOHN).orElseThrow().getPasswordHash()));
+        assertTrue(passwordEncoder.matches(
+                "nueva", usuarioRepository.findById(JOHN).orElseThrow().getPasswordHash()));
     }
 
     @Test
     void patchDeIdOFechaRegistroLanza400() {
-        assertThrows(PatchInvalidoException.class,
-                () -> usuarioService.patch(JOHN, List.of(replace("/id", "5")), JOHN));
-        assertThrows(PatchInvalidoException.class,
+        assertThrows(
+                PatchInvalidoException.class, () -> usuarioService.patch(JOHN, List.of(replace("/id", "5")), JOHN));
+        assertThrows(
+                PatchInvalidoException.class,
                 () -> usuarioService.patch(JOHN, List.of(replace("/fechaRegistro", "2020-01-01T00:00:00Z")), JOHN));
     }
 
     @Test
     void patchQueDejaElUsuarioInvalidoLanza400() {
-        assertThrows(PatchInvalidoException.class,
+        assertThrows(
+                PatchInvalidoException.class,
                 () -> usuarioService.patch(JOHN, List.of(replace("/email", "noesunemail")), JOHN));
-        assertThrows(PatchInvalidoException.class, () -> usuarioService.patch(
-                JOHN, List.of(new OperacionPatch(TipoOperacionPatch.REMOVE, "/nombre", null)), JOHN));
+        assertThrows(
+                PatchInvalidoException.class,
+                () -> usuarioService.patch(
+                        JOHN, List.of(new OperacionPatch(TipoOperacionPatch.REMOVE, "/nombre", null)), JOHN));
     }
 
     @Test
     void patchConEmailDeOtroUsuarioLanza409() {
-        assertThrows(EmailDuplicadoException.class,
+        assertThrows(
+                EmailDuplicadoException.class,
                 () -> usuarioService.patch(JOHN, List.of(replace("/email", "jane.smith@example.com")), JOHN));
     }
 
     @Test
     void patchDeOtroUsuarioLanza403() {
-        assertThrows(SinPermisoException.class,
-                () -> usuarioService.patch(JANE, List.of(replace("/nombre", "X")), JOHN));
+        assertThrows(
+                SinPermisoException.class, () -> usuarioService.patch(JANE, List.of(replace("/nombre", "X")), JOHN));
     }
 
     @Test
     void patchDeUsuarioInexistenteLanza404() {
-        assertThrows(UsuarioNoEncontradoException.class,
+        assertThrows(
+                UsuarioNoEncontradoException.class,
                 () -> usuarioService.patch(INEXISTENTE, List.of(replace("/nombre", "X")), INEXISTENTE));
+    }
+
+    @Test
+    void patchSinPathLanza400() {
+        assertThrows(
+                PatchInvalidoException.class,
+                () -> usuarioService.patch(
+                        JOHN,
+                        List.of(new OperacionPatch(TipoOperacionPatch.REPLACE, null, StringNode.valueOf("X"))),
+                        JOHN));
     }
 
     // --- delete ---

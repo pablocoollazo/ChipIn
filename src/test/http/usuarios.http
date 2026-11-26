@@ -111,7 +111,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "replace", "path": "/nombre", "value": "Johnny" }
+  {
+    "op": "replace",
+    "path": "/nombre",
+    "value": "Johnny"
+  }
 ]
 
 ### Cambiar la contraseña con JSON Patch (200). Después el login de tokens.http necesitará "nueva"
@@ -120,7 +124,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "add", "path": "/password", "value": "nueva" }
+  {
+    "op": "add",
+    "path": "/password",
+    "value": "nueva"
+  }
 ]
 
 ### Patch sobre un campo no modificable (400)
@@ -129,7 +137,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "replace", "path": "/id", "value": 5 }
+  {
+    "op": "replace",
+    "path": "/id",
+    "value": 5
+  }
 ]
 
 ### Patch que deja el email inválido (400)
@@ -138,7 +150,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "replace", "path": "/email", "value": "noesunemail" }
+  {
+    "op": "replace",
+    "path": "/email",
+    "value": "noesunemail"
+  }
 ]
 
 ### Patch con operación no soportada (400)
@@ -147,7 +163,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "move", "from": "/email", "path": "/nombre" }
+  {
+    "op": "move",
+    "from": "/email",
+    "path": "/nombre"
+  }
 ]
 
 ### Patch con el email de otro usuario (409)
@@ -156,7 +176,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "replace", "path": "/email", "value": "jane.smith@example.com" }
+  {
+    "op": "replace",
+    "path": "/email",
+    "value": "jane.smith@example.com"
+  }
 ]
 
 ### Patch de otro usuario (403)
@@ -165,7 +189,11 @@ Content-Type: application/json-patch+json
 Authorization: {{token}}
 
 [
-  { "op": "replace", "path": "/nombre", "value": "Jane" }
+  {
+    "op": "replace",
+    "path": "/nombre",
+    "value": "Jane"
+  }
 ]
 
 ### Patch con Content-Type application/json (415)
@@ -174,7 +202,23 @@ Content-Type: application/json
 Authorization: {{token}}
 
 [
-  { "op": "replace", "path": "/nombre", "value": "Johnny" }
+  {
+    "op": "replace",
+    "path": "/nombre",
+    "value": "Johnny"
+  }
+]
+
+### Patch sin path (400)
+PATCH http://localhost:8080/usuarios/1
+Content-Type: application/json-patch+json
+Authorization: {{token}}
+
+[
+  {
+    "op": "replace",
+    "value": "X"
+  }
 ]
 
 ### Borrar mi usuario siendo creador de un grupo (409)
